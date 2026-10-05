@@ -1,0 +1,54 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>MediPulse</title>
+<style>
+:root{--bg:#F4F8F8;--card:#fff;--ink:#12263A;--mut:#5B6B7A;--line:#D5E0E3;--ok:#0B8A7A;--warn:#8A5A00;--crit:#B3261E;--okbg:#E2F4F1;--warnbg:#FFF1D0;--critbg:#FCE4E2}
+@media(prefers-color-scheme:dark){:root{--bg:#0E1A24;--card:#16283A;--ink:#E8F1F5;--mut:#9DB0BE;--line:#2B4156;--ok:#4FD1BF;--warn:#F2B94B;--crit:#FF8A84;--okbg:#123A36;--warnbg:#3F3210;--critbg:#4A1D1B}}
+body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.5 system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:12px 16px 40px}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}h1{font-size:1.4rem;margin:8px 0}h1 span{color:var(--ok)}h2{font-size:1.1rem;margin:20px 0 8px}
+button,input,select,a.btn{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-height:44px;box-sizing:border-box}button{cursor:pointer}
+input,select{width:100%;margin:4px 0 10px}label{font-weight:700}button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--ok);outline-offset:2px}
+.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.row{display:flex;gap:6px;flex-wrap:wrap}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.banner{border-radius:14px;padding:14px 16px;font-weight:700;font-size:1.1rem;margin-bottom:10px}
+.s0{background:var(--okbg);color:var(--ok)}.s1{background:var(--warnbg);color:var(--warn)}.s2{background:var(--critbg);color:var(--crit)}
+.tile{border-radius:14px;padding:12px 14px}.tile small{display:block;font-weight:700}.tile b{font-size:2rem;line-height:1.1}.mut{color:var(--mut);font-size:.9rem}
+.item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}.item:last-child{border:0}.pill{border-radius:99px;padding:2px 10px;font-size:.85rem;font-weight:700}
+.go{display:flex;align-items:center;justify-content:center;width:100%;font-weight:700;font-size:1.1rem;min-height:56px;background:var(--ink);color:var(--bg);text-decoration:none;margin:8px 0}
+.ch{width:100%;height:170px;display:block}.err{color:var(--crit);font-weight:700;min-height:1.5em}.code{font-size:1.6rem;font-weight:700;letter-spacing:.08em}
+</style></head><body><div class="wrap">
+<header><h1>Medi<span>Pulse</span></h1><div><span id="who" class="mut"></span> <button id="out" onclick="logout()" hidden>Sign out</button></div></header>
+<main id="app"></main></div>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const L={hr:['Heart rate','bpm'],spo2:['Oxygen','%'],t:['Temperature','°C'],sys:['Systolic BP','mmHg']},N=['Normal','Warning','Critical'],RG={hr:[60,100,40,140],spo2:[95,100,85,100],t:[36.1,37.5,35,40],sys:[90,129,70,180]};
+const ADV={hr:'Check if resting, review medication.',spo2:'Check sensor fit, sit upright, review urgently.',t:'Fever: arrange a malaria rapid test.',sys:'Recheck cuff reading in 5 minutes.'};
+const lvl=(k,x)=>k=='hr'?(x<50||x>120?2:x<60||x>100?1:0):k=='spo2'?(x<91?2:x<95?1:0):k=='t'?(x>=38.5||x<35?2:x>37.5||x<36.1?1:0):(x>=160||x<90?2:x>=130?1:0);
+const fmt=(k,x)=>k=='t'?x.toFixed(1):Math.round(x),worst=p=>Math.max(...Object.keys(L).map(k=>lvl(k,p.v[k])));
+let D=null,ck='hr',mode='signup',timer;
+async function api(p,b){const r=await fetch('/api/'+p,{method:b?'POST':'GET',headers:b?{'Content-Type':'application/json'}:{},body:b?JSON.stringify(b):undefined});const j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(j.error||'Request failed');e.status=r.status;throw e}return j}
+const tiles=p=>'<div class="grid">'+Object.keys(L).map(k=>{const l=lvl(k,p.v[k]);return `<div class="tile s${l}"><small>${L[k][0]}</small><b>${fmt(k,p.v[k])}</b> ${L[k][1]}<div>${N[l]}</div></div>`}).join('')+'</div>';
+function chart(p){const k=ck,h=p.h[k],[a,b,mn,mx]=RG[k],y=v=>150-(Math.min(Math.max(v,mn),mx)-mn)/(mx-mn)*140;
+return `<div class="row" style="margin-bottom:8px">${Object.keys(L).map(x=>`<button class="${x==k?'on':''}" onclick="ck='${x}';draw()">${L[x][0]}</button>`).join('')}</div><svg class="ch" viewBox="0 0 300 160" preserveAspectRatio="none" role="img" aria-label="${L[k][0]} trend"><rect x="0" y="${y(b)}" width="300" height="${Math.max(2,y(a)-y(b))}" fill="var(--okbg)"/><polyline fill="none" stroke="var(--ink)" stroke-width="2.5" vector-effect="non-scaling-stroke" points="${h.map((v,i)=>`${i*300/59},${y(v)}`).join(' ')}"/></svg><div class="mut">Shaded band is the normal range (${a} to ${b} ${L[k][1]}).</div>`}
+const alerts=(p,act)=>p.alerts.length?p.alerts.map(x=>`<div class="item"><div><span class="pill s${x.l}">${N[x.l]}</span> <b>${L[x.k][0]} ${x.val} ${L[x.k][1]}</b><div class="mut">${x.time}${x.s=='ack'?' (acknowledged)':''} · ${ADV[x.k]}</div></div>${act&&x.s=='open'?`<button onclick="act('ack',{pid:'${p.id}',id:'${x.id}'})">Acknowledge</button>`:''}</div>`).join(''):'<div class="mut">No active alerts.</div>';
+const zoom=p=>p.call?`<a class="btn go" href="${esc(p.call.url)}" target="_blank" rel="noopener noreferrer">Join Zoom call (started by ${esc(p.call.by)})</a>${p.call.demo?'<div class="mut">Demo mode: opens the Zoom test page. Add Zoom credentials to create real meetings.</div>':''}`:`<button class="go" onclick="act('call',{pid:'${p.id}'})">Start Zoom call</button>`;
+const SCN=['normal','hypoxia','fever','tachycardia'];
+function patientView(p){const w=worst(p),h=new Date().getHours();return `<h2 style="margin-top:4px">${h<12?'Maakye':h<17?'Maaha':'Maadwo'}, ${esc(p.name.split(' ')[0])}</h2><div class="banner s${w}">${['All readings normal','Some readings need attention','Critical reading: your caregiver has been alerted'][w]}</div>${tiles(p)}<h2>Trends</h2><div class="card">${chart(p)}</div>
+<h2>My medication</h2><div class="card">${p.meds.map(m=>`<div class="item"><div><b>${esc(m.n)}</b><div class="mut">Due ${esc(m.w)}</div></div><button onclick="act('meds',{id:'${m.id}'})">${m.d?'Taken':'Mark as taken'}</button></div>`).join('')}</div>
+<h2>My caregiver code</h2><div class="card"><div class="code">${esc(p.code)}</div><div class="mut">Give this code to a family member or carer so they can sign up and follow your care.</div></div>${zoom(p)}
+<h2>Demo: simulate a condition</h2><div class="row">${SCN.map(s=>`<button class="${p.scn==s?'on':''}" onclick="act('scenario',{scn:'${s}'})">${s[0].toUpperCase()+s.slice(1)}</button>`).join('')}</div>`}
+function careView(ps){return `<h2 style="margin-top:4px">People you care for</h2>`+(ps.map(p=>{const w=worst(p),taken=p.meds.filter(m=>m.d).length;return `<div class="card"><div class="item" style="padding-top:0"><div><b style="font-size:1.2rem">${esc(p.name)}</b>, ${esc(p.age)}<div class="mut">${esc(p.cond)} · ${esc(p.hospital)}</div></div><span class="pill s${w}">${N[w]}</span></div>${tiles(p)}<h2>Alerts</h2>${alerts(p,true)}<h2>Today</h2><div class="mut">${taken} of ${p.meds.length} medicines taken</div><div class="card" style="margin-top:10px">${chart(p)}</div>${zoom(p)}<div class="row"><a class="btn go" style="flex:1;background:var(--crit);color:#fff" href="tel:193">Ambulance 193</a><a class="btn go" style="flex:1;background:var(--crit);color:#fff" href="tel:112">Emergency 112</a></div></div>`}).join('')||'<div class="mut">No linked patients.</div>')}
+function authView(){return `<div class="card"><div class="row"><button id="tu" class="on" onclick="setMode('signup')">Sign up</button><button id="ti" onclick="setMode('login')">Log in</button></div><div style="margin-top:12px">
+<div id="su"><label for="name">Full name</label><input id="name" autocomplete="name"><label for="role">I am a</label><select id="role" onchange="$('cc').hidden=this.value!='caregiver'"><option value="patient">Patient</option><option value="caregiver">Caregiver</option></select><div id="cc" hidden><label for="code">Patient's care code</label><input id="code" placeholder="e.g. AKO-482"></div></div>
+<label for="email">Email</label><input id="email" type="email" autocomplete="username"><label for="pw">Password (8+ characters)</label><input id="pw" type="password" autocomplete="current-password" onkeydown="if(event.key=='Enter')submit()">
+<div class="err" id="err" role="alert"></div><button class="go" id="sb" onclick="submit()">Create account</button></div></div>
+<h2>Demo accounts (password: demo1234)</h2><div class="card">${[['Akosua Boateng','patient','akosua@demo.gh'],['Yaw Boateng','caregiver','yaw@demo.gh'],['Kwame Asante','patient','kwame@demo.gh']].map(a=>`<div class="item"><div><b>${a[0]}</b><div class="mut">${a[1]} · ${a[2]}</div></div><button onclick="demo('${a[2]}')">Sign in</button></div>`).join('')}<div class="mut">Caregivers sign up with the patient's care code. Akosua's is AKO-482.</div></div>`}
+function setMode(m){mode=m;$('su').hidden=m!='signup';$('tu').className=m=='signup'?'on':'';$('ti').className=m=='login'?'on':'';$('sb').textContent=m=='signup'?'Create account':'Log in';$('pw').autocomplete=m=='signup'?'new-password':'current-password';$('err').textContent=''}
+async function submit(){const b={email:$('email').value,password:$('pw').value};if(mode=='signup')Object.assign(b,{name:$('name').value,role:$('role').value,code:$('code').value});
+try{await api(mode,b);await load(true)}catch(e){$('err').textContent=e.message}}
+function demo(e){$('email').value=e;$('pw').value='demo1234';setMode('login');submit()}
+async function act(p,b){try{await api(p,b);await load()}catch(e){alert(e.message)}}
+async function logout(){await api('logout',{});clearInterval(timer);D=null;draw()}
+function draw(){$('out').hidden=!D;$('who').textContent=D?`${D.user.name} (${D.user.role})`:'';const a=$('app');
+if(!D){if(!$('email'))a.innerHTML=authView();return}
+a.innerHTML=D.user.role=='patient'?patientView(D.patients[0]):careView(D.patients)}
+async function load(start){try{D=await api('dashboard');draw();if(start){clearInterval(timer);timer=setInterval(load,3000)}}catch(e){if(e.status==401){D=null;clearInterval(timer);$('app').innerHTML=authView()}}}
+load(true);
+</script></body></html>
