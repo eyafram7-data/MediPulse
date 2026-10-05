@@ -1,0 +1,14 @@
+{
+  "name": "medipulse",
+  "version": "1.0.0",
+  "description": "Remote care app for patients with mobility issues: patient and caregiver dashboards, live vitals, alerts and Zoom calls.",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "reset": "node scripts/reset.js",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=18" }
+}
