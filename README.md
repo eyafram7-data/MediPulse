@@ -1,4 +1,4 @@
-# MediPulse
+ MediPulse
 
 Remote care app for patients with mobility issues. Patients and caregivers sign up, each gets their own dashboard with live vitals, trends, alerts and medication tracking, and either can start a Zoom call.
 
