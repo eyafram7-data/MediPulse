@@ -7,7 +7,7 @@ Final year project. Vitals are simulated; real device integration is future work
 ## Quick start
 Requires Node.js 18+. No dependencies to install.
 
-    git clone <your-repo-url>
+    git clone https://github.com/eyafram7-data/medipulse
     cd medipulse
     npm start
 
